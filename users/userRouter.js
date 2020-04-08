@@ -4,7 +4,7 @@ const Post = require('../posts/postDb');
 
 const router = express.Router();
 
-router.post('/', (req, res) => {
+router.post('/', validateUser, (req, res) => {
   // add new user to db
   User.insert(req.body)
   .then(newUser => {
@@ -14,7 +14,7 @@ router.post('/', (req, res) => {
   .catch(err => res.status(500).json({ errorMessage: "Oops! Something went wrong." }))
 });
 
-router.post('/:id/posts', (req, res) => {
+router.post('/:id/posts', validateUserId, validatePost, (req, res) => {
   // add a new user post
   Post.insert(req.body)
   .then(newPost => {
@@ -35,7 +35,7 @@ router.get('/', (req, res) => {
   .catch(err => res.status(500).json({ errorMessage: "Oops! Something went wrong." }))
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', validateUserId, (req, res) => {
   // read user by id
   User.getById(req.params.id)
   .then(thisUser => {
@@ -44,7 +44,7 @@ router.get('/:id', (req, res) => {
   })
 });
 
-router.get('/:id/posts', (req, res) => {
+router.get('/:id/posts', validateUserId, (req, res) => {
   // read all posts associated with this user 
   User.getUserPosts(req.params.id)
   .then(posts => {
@@ -55,7 +55,7 @@ router.get('/:id/posts', (req, res) => {
   .catch(err => res.status(500).json({ errorMessage: "Oops! Something went wrong." }))  
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', validateUserId, (req, res) => {
   // delete user with this id
   User.remove(req.params.id)
   .then(response => {
@@ -69,7 +69,7 @@ router.delete('/:id', (req, res) => {
   .catch(err => res.status(500).json({ errorMessage: "Oops! Something went wrong." }))  
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', validateUserId, (req, res) => {
   // update user with this id
   const id = req.params.id;
   const updatedUser = req.body;
@@ -88,15 +88,40 @@ router.put('/:id', (req, res) => {
 //custom middleware
 
 function validateUserId(req, res, next) {
-  // do your magic!
+  let id = req.params.id;
+  User.getById(id)
+  .then(foundUser => {
+    if(!foundUser){
+      res.status(400).json({ errorMessage: "invalid user id"});
+    } else {
+      req.user = foundUser;
+      next();
+    }    
+  })
+  .catch(err => {
+    res.status(400).json({ errorMessage: "invalid user id"})
+  })
 }
 
 function validateUser(req, res, next) {
-  // do your magic!
+  if(!req.body){
+    res.status(400).json({ message: "missing user data"})
+  } else if(!req.body.name){
+    res.status(400).json({ message: "missing required name field"})
+  } else {
+    next();
+  }
 }
 
 function validatePost(req, res, next) {
-  // do your magic!
+  if(!req.body){
+    res.status(400).json({ message: "missing post data"})
+  } else if(!req.body.text || !req.body.user_id){
+    res.status(400).json({ message: "missing required text or user_id field"})
+  } else {
+    console.log("post looks good, moving on");
+    next();
+  }
 }
 
 module.exports = router;
